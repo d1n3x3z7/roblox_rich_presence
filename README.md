@@ -1,4 +1,4 @@
 # Advanced Roblox Rich Presence
-Advanced and configurable Roblox Rich Presence for Discord
+Advanced Roblox Rich Presence for Discord
 
-Discord: https://discord.gg/79P4Vew44D (help and etc.)
+More info in Discord: https://discord.gg/79P4Vew44D (help and etc.)
