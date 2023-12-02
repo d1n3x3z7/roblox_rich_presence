@@ -1,85 +1,119 @@
 # My Discord: d1n3x3z7
 # My Github: https://github.com/Denixuz
 # My Discord Server: https://discord.gg/79P4Vew44D (тут можно помочь с разработкой, попросить помощи или просто найти друзей)
-# version: 0.1.0
+# version: 0.1.1
 
 # Если у вас будет желание что-либо изменить в этом коде, помимо уже предстоящего, обращайтесь ко мне в дискорд
 # Все баг репорты и пожелания в дискорд сервер
 
-# Вообщем, на данный момент софт обрабатывает всё по тупой логике, что в следующих обновлениях будет изменено
-# RRP не видит игру если вы не входили в неё через страницу самой игры + рипается показ игры если вы перейдёте на другую страницу (это будет изменено)
+# Логика сканирования переработана
 
 import pypresence
-import psutil
 
+from time import sleep
 from selenium import webdriver
 
 from selenium.webdriver.chrome.options import Options
+from selenium.common.exceptions import NoSuchWindowException
+from selenium.common.exceptions import WebDriverException
 
 from bs4 import BeautifulSoup as bs
+
+browser = webdriver.Chrome # можно изменять на Firefox/Chrome/Edge | else: (фу, ты что, пользуешься яндексом?)
 
 browseroptions = Options()
 browseroptions.add_argument('--no-sandbox')
 browseroptions.page_load_strategy = 'normal'
+browseroptions.add_experimental_option("excludeSwitches", ['enable-automation'])
+browseroptions.add_argument('--log-level=3')
 
 class RichPresence():
 
     def __init__(self):
-        self.session = webdriver.Chrome(options=browseroptions)
+        self.ssession = browser(options=browseroptions)
+        self.ssession.maximize_window()
+
+        browseroptions.add_argument('--headless')
+        self.rsession = browser(options=browseroptions) # ну типо...
+
         self.presence = pypresence.Presence('1179993301718421585')
+
+        self.state = 'Roblox Rich Presence'
+        self.large_image = 'roblox'
+
+        self.rblxcookie = None
+
         self.profilelink = None
         self.game = None
         self.gamelink = None
         self.joingamelink = None
-        self.large_image = 'roblox'
         self.small_image = None
-        self.state = 'RRP Alpha'
         self.details = None
         self.nickname = None
 
         self.start_session()
         while True:
+            try:
+                handler = self.ssession.window_handles
+            except (NoSuchWindowException, WebDriverException):
+                exit()
+
             self.update_status()
 
     def start_session(self):
-        s = self.session
+        ss = self.ssession
+        rs = self.rsession
         p = self.presence
-        s.get('https://www.roblox.com/Login')
+        ss.get('https://www.roblox.com/Login')
 
-        while s.current_url == 'https://www.roblox.com/Login' or s.current_url == 'https://www.roblox.com':
+        while ss.current_url == 'https://www.roblox.com/Login' or ss.current_url == 'https://www.roblox.com' or ss.current_url != 'https://www.roblox.com/home':
             continue
         
         p.connect()
-        pars = bs(s.page_source, 'html.parser')
+
+        pars = bs(ss.page_source, 'html.parser')
         self.nickname = pars.find('span', class_='text-overflow age-bracket-label-username font-caption-header').text[0]
         self.profilelink = pars.find('a', class_='text-link dynamic-overflow-container')['href']
-        self.state = 'nothing...'
-        self.details = 'Idling'
 
+        cook = ss.get_cookie(name='.ROBLOSECURITY').get('value')
+        rs.get('https://www.roblox.com/home')
+        rs.add_cookie({'name':'.ROBLOSECURITY', 'value': cook, 'path':'/', 'domain':'.roblox.com','secure':True,'httpOnly':True})
+        rs.refresh()
+        rs.get(self.profilelink)
     
     def update_status(self):
-        s = self.session
+        rs = self.rsession
         p = self.presence
 
-        gamelaunched = False
+        rs.refresh()
+        sleep(1)
+        rp = rs.page_source
 
-        for x in psutil.process_iter():
-            if x.name == 'RobloxPlayerBeta.exe':
-                gamelaunched = True
+        gs = bs(rp, 'html.parser')
 
-        if 'https://www.roblox.com/games/' in s.current_url and gamelaunched == True:
-            if '#' in s.current_url:
-                self.game = ''.join(s.current_url[s.current_url[:s.current_url.find('#')].rfind('/')+1:].split('-'))
-                self.gamelink = s.current_url[:s.current_url.find('#')]
-            else:
-                self.game = ''.join(s.current_url[s.current_url.rfind('/')+1:].split('-'))
-                self.gamelink = s.current_url
-            
-            self.details = f'Playing in {self.game}'
+        ingame = gs.find('span', class_='profile-avatar-status game icon-game')
+        online = gs.find('span', class_='profile-avatar-status online icon-online')
+        studio = gs.find('span', class_='profile-avatar-status studio icon-studio')
 
-            p.update(state=self.state, details=self.details, large_image=self.large_image, buttons=[{'label': 'My Roblox Profile', 'url':self.profilelink},{'label':'Game', 'url':self.gamelink}])
-        else:
-            self.details = 'Idling'
+        if ingame == None and online == None and studio == None:
+            self.details = 'Offline'
             p.update(state=self.state, details=self.details, large_image=self.large_image, buttons=[{'label': 'My Roblox Profile', 'url':self.profilelink}])
+            return
+        
+        if ingame != None:
+            self.game = ingame['title']
+            self.gamelink = gs.find('a', class_='avatar-status')['href']
+            self.details = f'Playing in {self.game}'
+            p.update(state=self.state, details=self.details, large_image=self.large_image, buttons=[{'label': 'My Roblox Profile', 'url':self.profilelink},{'label':'Game', 'url':self.gamelink}])
+            return
+                
+        if online != None:
+            self.details = "Surfing the Roblox Website"
+
+        if studio != None:
+            self.details = 'Working in Roblox Studio'
+
+        p.update(state=self.state, details=self.details, large_image=self.large_image, buttons=[{'label': 'My Roblox Profile', 'url':self.profilelink}])
+        return
 
 RichPresence()
