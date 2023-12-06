@@ -1,5 +1,5 @@
 # My Discord: d1n3x3z7
-# My Github: https://github.com/Denixuz
+# My Github: https://github.com/d1n3x3z7
 # My Discord Server: https://discord.gg/79P4Vew44D (тут можно помочь с разработкой, попросить помощи или просто найти друзей)
 # version: 0.1.1
 
